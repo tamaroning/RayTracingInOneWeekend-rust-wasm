@@ -1,9 +1,17 @@
+mod utils;
+
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader};
 
 const WIDTH: u32 = 256;
 const HEIGHT: u32 = 256;
+
+/*
+#[derive(Debug, Clone, Copy)]
+struct Color(f32, f32, f32, f32);
+struct Vec3(f32, f32, f32);
+*/
 
 fn main() {
     #[wasm_bindgen(start)]
@@ -54,9 +62,33 @@ fn main() {
         //
         // Computation Start
         //
+        /*
+        let mut vertices: [f32;(WIDTH * HEIGHT * 3) as usize] = [0.0; (WIDTH * HEIGHT * 3) as usize];
+        let mut colors: [f32; (WIDTH * HEIGHT * 4) as usize] = [0.0; (WIDTH * HEIGHT * 4) as usize];
+        for y in 0..HEIGHT {
+            for x in 0.. WIDTH {
+                let px = (x / (WIDTH-1)) as f32 * 2.0 - 1.0;
+                let py = (y / (HEIGHT-1)) as f32 * 2.0 - 1.0;
+                vertices[(y * WIDTH + x * 3) as usize] = px;
+                vertices[(y * WIDTH + x * 3) as usize + 1] = py;
+                // z is already set to 0.
+
+                let r = (x / (WIDTH-1)) as f32;
+                let g = (y / (HEIGHT-1)) as f32;
+                let b = 0.25;
+                let a = 0.5;
+                colors[((y * WIDTH + x) * 4) as usize] = r;
+                colors[((y * WIDTH + x) * 4) as usize + 1] = g;
+                colors[((y * WIDTH + x) * 4) as usize + 2] = b;
+                colors[((y * WIDTH + x) * 4) as usize + 3] = a;
+            }
+        }
+        */
         let vertices: [f32; 9] = [-0.7, -0.7, 0.0, 0.7, -0.7, 0.0, 0.0, 0.7, 0.0];
 
         let position_attribute_location = context.get_attrib_location(&program, "position");
+
+
         let buffer = context.create_buffer().ok_or("Failed to create buffer")?;
         context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
 
@@ -89,20 +121,6 @@ fn main() {
         context.bind_vertex_array(Some(&vao));
 
         let vert_count = (vertices.len() / 3) as i32;
-        /*
-        for y in 0..HEIGHT {
-            for x in 0.. WIDTH {
-                let r = (x / (WIDTH-1)) as f32;
-                let g = (y / (HEIGHT-1)) as f32;
-                let b = 0.25;
-
-                let px = (x / (WIDTH-1)) as f32 * 2.0 - 1.0;
-                let py = (y / (HEIGHT-1)) as f32 * 2.0 - 1.0;
-                let vertices: [f32; 3] = [px, py, 0.0];
-
-            }
-        }
-        */
         //
         // Computation End
         //
@@ -113,7 +131,7 @@ fn main() {
     }
 
     fn draw(context: &WebGl2RenderingContext, vert_count: i32) {
-        context.clear_color(0.0, 0.0, 0.0, 1.0);
+        context.clear_color(0.0, 0.0, 1.0, 1.0);
         context.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);
 
         context.draw_arrays(WebGl2RenderingContext::TRIANGLES, 0, vert_count);
