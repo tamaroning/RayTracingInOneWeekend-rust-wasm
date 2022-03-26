@@ -85,15 +85,24 @@ fn main() {
         }
         log!("{:?}", &vertices[0..100]);
         */
-        let vertices: [f32; 9] = [-0.7, -0.7, 0.0, 0.7, -0.7, 0.0, 0.0, 0.7, 0.0];
-        let colors: [f32; 12] = [1.0, 1.0, 0.0, 0.5, 1.0, 1.0, 0.0, 0.5, 1.0, 1.0, 0.0, 0.5];
 
-        let position_attribute_location = context.get_attrib_location(&program, "position");
+        // Select the positionBuffer as the one to apply buffer
+        // operations to from here out.
+
         let position_buffer = context.create_buffer().ok_or("Failed to create buffer")?;
-        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&position_buffer));
+        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&position_buffer)); 
+
+        
+        // Now create an array of positions for the square.
+        
+        let positions: [f32; 6] = [-0.7, -0.7, 0.7, -0.7, 0.0, 0.7];
+
+        // Now pass the list of positions into WebGL to build the
+        // shape. We do this by creating a Float32Array from the
+        // JavaScript array, then use it to fill the current buffer.
 
         unsafe {
-            let positions_array_buf_view = js_sys::Float32Array::view(&vertices);
+            let positions_array_buf_view = js_sys::Float32Array::view(&positions);
 
             context.buffer_data_with_array_buffer_view(
                 WebGl2RenderingContext::ARRAY_BUFFER,
@@ -102,6 +111,43 @@ fn main() {
             );
         }
 
+        // Now set up the colors for the vertices
+
+        let color_buffer = context.create_buffer().ok_or("Failed to create buffer")?;
+        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&color_buffer)); 
+
+        let colors: [f32; 12] = [1.0, 1.0, 0.0, 0.5, 1.0, 1.0, 0.0, 0.5, 1.0, 1.0, 0.0, 0.5];
+        unsafe {
+            let colors_array_buf_view = js_sys::Float32Array::view(&colors);
+
+            context.buffer_data_with_array_buffer_view(
+                WebGl2RenderingContext::ARRAY_BUFFER,
+                &colors_array_buf_view,
+                WebGl2RenderingContext::STATIC_DRAW,
+            );
+        }
+
+
+        // Tell WebGL how to pull out the positions from the position
+        // buffer into the vertexPosition attribute
+        {
+            context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&position_buffer));
+            context.vertex_attrib_pointer_with_i32(0, 2, WebGl2RenderingContext::FLOAT, false, 0, 0);
+            let position_attribute_location = context.get_attrib_location(&program, "position");
+            context.enable_vertex_attrib_array(position_attribute_location as u32);
+        }
+
+        
+        // Tell WebGL how to pull out the colors from the color buffer
+        // into the vertexColor attribute.
+        /*{
+            context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&color_buffer));
+            context.vertex_attrib_pointer_with_i32(0, 4, WebGl2RenderingContext::FLOAT, false, 0, 0);
+            let color_attribute_location = context.get_attrib_location(&program, "color");
+            context.enable_vertex_attrib_array(color_attribute_location as u32);
+        }*/
+
+        /*
         let vao = context
             .create_vertex_array()
             .ok_or("Could not create vertex array object")?;
@@ -109,29 +155,9 @@ fn main() {
         context.vertex_attrib_pointer_with_i32(0, 3, WebGl2RenderingContext::FLOAT, false, 0, 0);
         context.enable_vertex_attrib_array(position_attribute_location as u32);
         context.bind_vertex_array(Some(&vao));
-
-        /* 
-        let color_attribute_location = context.get_attrib_location(&program, "color");
-        let color_buffer = context.create_buffer().ok_or("Failed to create buffer")?;
-        context.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&color_buffer));
-        unsafe {
-            let colors_array_buf_view = js_sys::Float32Array::view(&colors);
-            context.buffer_data_with_array_buffer_view(
-                WebGl2RenderingContext::ARRAY_BUFFER,
-                &colors_array_buf_view,
-                WebGl2RenderingContext::STATIC_DRAW,
-            );
-        }
-        let vao = context
-            .create_vertex_array()
-            .ok_or("Could not create vertex array object")?;
-        context.bind_vertex_array(Some(&vao));
-        context.vertex_attrib_pointer_with_i32(0, 4, WebGl2RenderingContext::FLOAT, false, 0, 0);
-        context.enable_vertex_attrib_array(color_attribute_location as u32);
-        context.bind_vertex_array(Some(&vao));
         */
 
-        let vert_count = (vertices.len() / 3) as i32;
+        let vert_count = (positions.len() / 2) as i32;
         //
         // Computation End
         //
