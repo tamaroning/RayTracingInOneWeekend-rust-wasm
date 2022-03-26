@@ -1,20 +1,25 @@
-#![allow(unused_variables)]
-fn main() {
-    use wasm_bindgen::prelude::*;
-    use wasm_bindgen::JsCast;
-    use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader};
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
+use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader};
 
+const WIDTH: u32 = 256;
+const HEIGHT: u32 = 256;
+
+fn main() {
     #[wasm_bindgen(start)]
     pub fn start() -> Result<(), JsValue> {
         let document = web_sys::window().unwrap().document().unwrap();
         let canvas = document.get_element_by_id("canvas").unwrap();
         let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>()?;
+        canvas.set_height(HEIGHT);
+        canvas.set_width(WIDTH);
 
         let context = canvas
             .get_context("webgl2")?
             .unwrap()
             .dyn_into::<WebGl2RenderingContext>()?;
 
+        // FIXME: Is gl_PointSize OK?
         let vert_shader = compile_shader(
             &context,
             WebGl2RenderingContext::VERTEX_SHADER,
@@ -23,8 +28,8 @@ fn main() {
         in vec4 position;
 
         void main() {
-        
             gl_Position = position;
+            // gl_PointSize = 1.0;
         }
         "##,
         )?;
@@ -42,9 +47,13 @@ fn main() {
         }
         "##,
         )?;
+
         let program = link_program(&context, &vert_shader, &frag_shader)?;
         context.use_program(Some(&program));
 
+        //
+        // Computation Start
+        //
         let vertices: [f32; 9] = [-0.7, -0.7, 0.0, 0.7, -0.7, 0.0, 0.0, 0.7, 0.0];
 
         let position_attribute_location = context.get_attrib_location(&program, "position");
@@ -80,6 +89,24 @@ fn main() {
         context.bind_vertex_array(Some(&vao));
 
         let vert_count = (vertices.len() / 3) as i32;
+        /*
+        for y in 0..HEIGHT {
+            for x in 0.. WIDTH {
+                let r = (x / (WIDTH-1)) as f32;
+                let g = (y / (HEIGHT-1)) as f32;
+                let b = 0.25;
+
+                let px = (x / (WIDTH-1)) as f32 * 2.0 - 1.0;
+                let py = (y / (HEIGHT-1)) as f32 * 2.0 - 1.0;
+                let vertices: [f32; 3] = [px, py, 0.0];
+
+            }
+        }
+        */
+        //
+        // Computation End
+        //
+
         draw(&context, vert_count);
 
         Ok(())
