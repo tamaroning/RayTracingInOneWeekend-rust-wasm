@@ -25,3 +25,11 @@ macro_rules! uint_16_array {
         array
     }};
 }
+
+// This macro is retrived from https://github.com/lykhouzov/rust-wasm-webgl/blob/master/src/utils.rs
+#[macro_export]
+macro_rules! log {
+    ( $( $t:tt )* ) => {
+        web_sys::console::log_1(&format!( $( $t )* ).into());
+    }
+}
