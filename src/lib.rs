@@ -1,23 +1,25 @@
-mod utils;
-mod ray;
 mod hit;
+mod ray;
+mod utils;
 
 use hit::Hittable;
+use hit::{HittableList, Sphere};
+use js_sys::Math::sqrt;
 use nalgebra::Vector3;
 use rand::prelude::ThreadRng;
+use ray::Ray;
 use std::f64::INFINITY;
 use utils::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::CanvasRenderingContext2d;
-use ray::Ray;
-use hit::{HittableList, Sphere};
 
 const ASPECT_RATIO: f64 = 16. / 9.;
 const WIDTH: u32 = 512;
 const HEIGHT: u32 = (WIDTH as f64 / ASPECT_RATIO) as u32;
-const RESOLUTION: u32 = 1;
-const SAMPLES_PER_PIXEL: u32 = 4;
+const RESOLUTION: u32 = 2;
+const SAMPLES_PER_PIXEL: u32 = 6;
+const MAX_DEPTH: i32 = 10;
 
 // (r, g, b) = (x, y, z)
 type Color = Vector3<f64>;
@@ -144,7 +146,7 @@ fn draw(context: &CanvasRenderingContext2d) {
 
                 let ray = camera.get_ray(u, v);
 
-                pixel_color += ray_color(&ray, &world, &mut rng);
+                pixel_color += ray_color(&ray, &world, &mut rng, MAX_DEPTH);
             }
             write_color(&context, x, y, pixel_color);
         }
@@ -152,33 +154,48 @@ fn draw(context: &CanvasRenderingContext2d) {
     log!("Done!");
 }
 
-fn ray_color<T>(ray: &Ray, world: &HittableList<T>, rng: &mut ThreadRng) -> Color
+fn ray_color<T>(ray: &Ray, world: &HittableList<T>, rng: &mut ThreadRng, depth: i32) -> Color
 where
     T: Hittable,
 {
-    let color = match world.hit(ray, 0., INFINITY) {
+    // If we've exceeded the ray bounce limit, no more light is gathered.
+    if depth < 0 {
+        return Color::new(0., 0., 0.);
+    }
+    match world.hit(ray, 0., INFINITY) {
         Some(hit_record) => {
             let target = hit_record.p + hit_record.normal + random_vec3_in_unit_spehere(rng);
-            0.5 * ray_color(&Ray::new(hit_record.p, target - hit_record.p), world, rng)
-        },
+            0.5 * ray_color(
+                &Ray::new(hit_record.p, target - hit_record.p),
+                world,
+                rng,
+                depth - 1,
+            )
+        }
         None => {
             let unit_direction = ray.direction.normalize();
             let t = 0.5 * (unit_direction.y + 1.);
             (1. - t) * Color::new(1., 1., 1.) + t * Color::new(0.5, 0.7, 1.)
         }
-    };
-    color / SAMPLES_PER_PIXEL as f64
+    }
 }
 
 fn write_color(context: &CanvasRenderingContext2d, x: u32, y: u32, color: Color) {
     let (r, g, b) = (color.x, color.y, color.z);
+
+    // Divide the color by the number of samples and gamma-correct for gamma=2.0.
+    let scale = 1. / SAMPLES_PER_PIXEL as f64;
+    let r = sqrt(scale * r);
+    let g = sqrt(scale * g);
+    let b = sqrt(scale * b);
+
     let px = x as f64;
     let py = y as f64;
     let color = JsValue::from_str(&format!(
         "rgba({},{},{},{})",
-        255. * r,
-        255. * g,
-        255. * b,
+        255. * clamp(r, 0., 0.999),
+        255. * clamp(g, 0., 0.999),
+        255. * clamp(b, 0., 0.999),
         255.
     ));
     context.set_fill_style(&color);

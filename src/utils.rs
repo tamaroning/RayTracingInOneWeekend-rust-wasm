@@ -37,6 +37,16 @@ macro_rules! log {
     }
 }
 
+pub fn clamp(x: f64, min: f64, max: f64) -> f64 {
+    if x < min {
+        min
+    } else if x > max {
+        max
+    } else {
+        x
+    }
+}
+
 pub fn random_f64(rng: &mut ThreadRng, min: f64, max: f64) -> f64 {
     rng.gen::<f64>() * (max - min) + min
 }
