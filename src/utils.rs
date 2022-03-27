@@ -58,6 +58,8 @@ pub fn random_vec3(rng: &mut ThreadRng) -> Vector3<f64> {
     Vector3::new(rng.gen::<f64>(), rng.gen::<f64>(), rng.gen::<f64>())
 }
 
+// different diffuse formulation
+// 1
 pub fn random_vec3_in_unit_spehere(rng: &mut ThreadRng) -> Vector3<f64> {
     loop {
         let v = random_vec3(rng);
@@ -68,6 +70,7 @@ pub fn random_vec3_in_unit_spehere(rng: &mut ThreadRng) -> Vector3<f64> {
     }
 }
 
+// 2
 pub fn random_unit_vector(rng: &mut ThreadRng) -> Vector3<f64> {
     let a = random_f64(rng, 0., 2. * PI);
     let z = random_f64(rng, - 1., 1.);
