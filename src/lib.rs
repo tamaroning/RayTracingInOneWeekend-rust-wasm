@@ -162,7 +162,7 @@ where
     if depth < 0 {
         return Color::new(0., 0., 0.);
     }
-    match world.hit(ray, 0., INFINITY) {
+    match world.hit(ray, 0.001, INFINITY) {
         Some(hit_record) => {
             let target = hit_record.p + hit_record.normal + random_vec3_in_unit_spehere(rng);
             0.5 * ray_color(
