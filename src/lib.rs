@@ -1,11 +1,12 @@
 mod utils;
 
+use js_sys::Math::sqrt;
 use nalgebra::Vector3;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::CanvasRenderingContext2d;
 
-const ASPECT_RATIO: f64 = 16.0 / 9.0;
+const ASPECT_RATIO: f64 = 16. / 9.;
 const WIDTH: u32 = 512;
 const HEIGHT: u32 = (WIDTH as f64 / ASPECT_RATIO) as u32;
 const RESOLUTION: u32 = 1;
@@ -23,7 +24,7 @@ impl Info {
     }
 
     pub fn update_progress(&mut self, x: u32, y: u32) {
-        self.progress = (((y * WIDTH + x) as f32 / (WIDTH * HEIGHT) as f32) * 100.0) as u32;
+        self.progress = (((y * WIDTH + x) as f32 / (WIDTH * HEIGHT) as f32) * 100.) as u32;
     }
 }
 
@@ -65,15 +66,15 @@ fn draw(context: &CanvasRenderingContext2d) {
     //
     // Camera
     //
-    let viewport_height: f64 = 2.0;
+    let viewport_height: f64 = 2.;
     let viewport_width: f64 = ASPECT_RATIO * viewport_height;
-    let forcal_length: f64 = 1.0;
+    let forcal_length: f64 = 1.;
 
     let origin = Vector3::new(0., 0., 0.);
     let horizontal = Vector3::new(viewport_width, 0., 0.);
     let vertical = Vector3::new(0., viewport_height, 0.);
     let lower_left_corner =
-        origin - horizontal / 2.0 - vertical / 2.0 - Vector3::new(0., 0., forcal_length);
+        origin - horizontal / 2. - vertical / 2. - Vector3::new(0., 0., forcal_length);
 
     //
     // Render
@@ -81,7 +82,7 @@ fn draw(context: &CanvasRenderingContext2d) {
     context.save();
     for y in 0..HEIGHT {
         for x in 0..WIDTH {
-            if x == 0 {
+            if x == 0 && y % 3 == 0 {
                 info.update_progress(x, y);
                 log!("progress y = {}, {}% completed", y, info.progress);
             }
@@ -90,7 +91,7 @@ fn draw(context: &CanvasRenderingContext2d) {
             }
 
             let u = x as f64 / (WIDTH - 1) as f64;
-            let v = 1.0 - (y as f64 / (HEIGHT - 1) as f64);
+            let v = 1. - (y as f64 / (HEIGHT - 1) as f64);
             let ray = Ray::new(
                 origin,
                 lower_left_corner + u * horizontal + v * vertical - origin,
@@ -103,12 +104,13 @@ fn draw(context: &CanvasRenderingContext2d) {
 }
 
 fn ray_color(ray: &Ray) -> Color {
-    if hit_sphere(Vector3::new(0., 0., -1.), 0.5, ray) {
-        return Color::new(1., 0., 0.);
+    if let Some(t) = hit_sphere(Vector3::new(0., 0., -1.), 0.5, ray) {
+        let n: Vector3<f64> = (ray.at(t) - Vector3::new(0., 0., -1.)).normalize();
+        return 0.5 * (n + Vector3::new(1., 1., 1.));
     }
     let unit_direction = ray.direction.normalize();
-    let t = 0.5 * (unit_direction.y + 1.0);
-    (1.0 - t) * Color::new(1.0, 1.0, 1.0) + t * Color::new(0.5, 0.7, 1.0)
+    let t = 0.5 * (unit_direction.y + 1.);
+    (1. - t) * Color::new(1., 1., 1.) + t * Color::new(0.5, 0.7, 1.)
 }
 
 fn write_color(context: &CanvasRenderingContext2d, x: u32, y: u32, color: Color) {
@@ -127,11 +129,15 @@ fn write_color(context: &CanvasRenderingContext2d, x: u32, y: u32, color: Color)
     context.fill_rect(px, py, px + RESOLUTION as f64, py + RESOLUTION as f64);
 }
 
-fn hit_sphere(center: Vector3<f64>, radius: f64, ray: &Ray) -> bool {
+fn hit_sphere(center: Vector3<f64>, radius: f64, ray: &Ray) -> Option<f64> {
     let oc = ray.origin - center;
     let a = ray.direction.dot(&ray.direction);
-    let b = 2.0 * oc.dot(&ray.direction);
+    let b = 2. * oc.dot(&ray.direction);
     let c = oc.dot(&oc) - radius * radius;
-    let discriminant = b * b - 4.0 * a * c;
-    discriminant > 0.
+    let discriminant = b * b - 4. * a * c;
+    if discriminant < 0. {
+        None
+    } else {
+        Some((-b - sqrt(discriminant)) / (2. * a))
+    }
 }
