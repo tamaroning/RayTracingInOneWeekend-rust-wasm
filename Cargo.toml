@@ -10,6 +10,8 @@ crate-type = ["cdylib"]
 js-sys = "0.3.56"
 wasm-bindgen = "0.2.79"
 nalgebra = "0.30.1"
+rand = "0.8.5"
+getrandom = { version = "0.2", features = ["js"] }
 
 [dependencies.web-sys]
 version = "0.3.56"
@@ -17,11 +19,6 @@ features = [
   'Document',
   'Element',
   'HtmlCanvasElement',
-  'WebGlBuffer',
-  'WebGlVertexArrayObject',
-  'WebGl2RenderingContext',
-  'WebGlProgram',
-  'WebGlShader',
   'Window',
   'console',
   'CanvasRenderingContext2d'

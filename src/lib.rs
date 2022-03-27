@@ -4,6 +4,7 @@ use std::f64::INFINITY;
 
 use js_sys::Math::sqrt;
 use nalgebra::Vector3;
+use rand::Rng;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::CanvasRenderingContext2d;
@@ -12,6 +13,7 @@ const ASPECT_RATIO: f64 = 16. / 9.;
 const WIDTH: u32 = 512;
 const HEIGHT: u32 = (WIDTH as f64 / ASPECT_RATIO) as u32;
 const RESOLUTION: u32 = 1;
+const SAMPLES_PER_PIXEL: u32 = 4;
 
 // (r, g, b) = (x, y, z)
 type Color = Vector3<f64>;
@@ -164,8 +166,53 @@ impl Hittable for Sphere {
     }
 }
 
+#[allow(dead_code)]
+struct Camera {
+    viewport_height: f64,
+    viewport_width: f64,
+    forcal_length: f64,
+
+    origin: Vector3<f64>,
+    horizontal: Vector3<f64>,
+    vertical: Vector3<f64>,
+    lower_left_corner: Vector3<f64>,
+}
+
+impl Camera {
+    fn new() -> Self {
+        let viewport_height: f64 = 2.;
+        let viewport_width: f64 = ASPECT_RATIO * viewport_height;
+        let forcal_length: f64 = 1.;
+
+        let origin = Vector3::new(0., 0., 0.);
+        let horizontal = Vector3::new(viewport_width, 0., 0.);
+        let vertical = Vector3::new(0., viewport_height, 0.);
+        let lower_left_corner =
+            origin - horizontal / 2. - vertical / 2. - Vector3::new(0., 0., forcal_length);
+
+        Camera {
+            viewport_height,
+            viewport_width,
+            forcal_length,
+
+            origin,
+            horizontal,
+            vertical,
+            lower_left_corner,
+        }
+    }
+
+    fn get_ray(&self, u: f64, v: f64) -> Ray {
+        Ray::new(
+            self.origin,
+            self.lower_left_corner + u * self.horizontal + v * self.vertical - self.origin,
+        )
+    }
+}
+
 fn draw(context: &CanvasRenderingContext2d) {
     let mut info = Info::new();
+    let mut rng = rand::thread_rng();
 
     //
     // World
@@ -183,15 +230,7 @@ fn draw(context: &CanvasRenderingContext2d) {
     //
     // Camera
     //
-    let viewport_height: f64 = 2.;
-    let viewport_width: f64 = ASPECT_RATIO * viewport_height;
-    let forcal_length: f64 = 1.;
-
-    let origin = Vector3::new(0., 0., 0.);
-    let horizontal = Vector3::new(viewport_width, 0., 0.);
-    let vertical = Vector3::new(0., viewport_height, 0.);
-    let lower_left_corner =
-        origin - horizontal / 2. - vertical / 2. - Vector3::new(0., 0., forcal_length);
+    let camera = Camera::new();
 
     //
     // Render
@@ -207,15 +246,16 @@ fn draw(context: &CanvasRenderingContext2d) {
                 continue;
             }
 
-            let u = x as f64 / (WIDTH - 1) as f64;
-            let v = 1. - (y as f64 / (HEIGHT - 1) as f64);
+            let mut pixel_color = Color::new(0., 0., 0.);
+            for _ in 0..SAMPLES_PER_PIXEL {
+                let u = (x as f64 + rng.gen::<f64>() * RESOLUTION as f64) / (WIDTH - 1) as f64;
+                let v =
+                    1. - (y as f64 + rng.gen::<f64>() * RESOLUTION as f64) / (HEIGHT - 1) as f64;
 
-            let ray = Ray::new(
-                origin,
-                lower_left_corner + u * horizontal + v * vertical - origin,
-            );
+                let ray = camera.get_ray(u, v);
 
-            let pixel_color = ray_color(&ray, &world);
+                pixel_color += ray_color(&ray, &world);
+            }
             write_color(&context, x, y, pixel_color);
         }
     }
@@ -226,12 +266,15 @@ fn ray_color<T>(ray: &Ray, world: &HittableList<T>) -> Color
 where
     T: Hittable,
 {
-    if let Some(hit_record) = world.hit(ray, 0., INFINITY) {
-        return 0.5 * (hit_record.normal + Vector3::new(1., 1., 1.));
-    }
-    let unit_direction = ray.direction.normalize();
-    let t = 0.5 * (unit_direction.y + 1.);
-    (1. - t) * Color::new(1., 1., 1.) + t * Color::new(0.5, 0.7, 1.)
+    let color = match world.hit(ray, 0., INFINITY) {
+        Some(hit_record) => 0.5 * (hit_record.normal + Vector3::new(1., 1., 1.)),
+        None => {
+            let unit_direction = ray.direction.normalize();
+            let t = 0.5 * (unit_direction.y + 1.);
+            (1. - t) * Color::new(1., 1., 1.) + t * Color::new(0.5, 0.7, 1.)
+        }
+    };
+    color / SAMPLES_PER_PIXEL as f64
 }
 
 fn write_color(context: &CanvasRenderingContext2d, x: u32, y: u32, color: Color) {
