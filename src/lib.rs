@@ -235,8 +235,7 @@ where
 }
 
 fn write_color(context: &CanvasRenderingContext2d, x: u32, y: u32, color: Color) {
-    // a is hardcoded to 0
-    let (r, g, b, a) = (color.x, color.y, color.z, 1.0);
+    let (r, g, b, a) = (color.x, color.y, color.z, 1.);
     let px = x as f64;
     let py = y as f64;
     let color = JsValue::from_str(&format!(
