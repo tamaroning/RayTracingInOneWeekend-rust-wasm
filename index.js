@@ -1,2 +1,4 @@
 import('./pkg')
-  .catch(console.error);
+  .then(wasm => {
+    // nop
+});
