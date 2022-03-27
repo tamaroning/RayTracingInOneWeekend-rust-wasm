@@ -1,5 +1,7 @@
 mod utils;
 
+use std::f64::INFINITY;
+
 use js_sys::Math::sqrt;
 use nalgebra::Vector3;
 use wasm_bindgen::prelude::*;
@@ -60,8 +62,123 @@ impl Ray {
     }
 }
 
+#[derive(Default)]
+struct HitRecord {
+    p: Vector3<f64>,
+    t: f64,
+    normal: Vector3<f64>,
+    // front_face := ray dot normal < 0.
+    // i.e. true  => ray hits front of surface
+    //      false => ray hits front of surface
+    front_face: bool,
+}
+
+impl HitRecord {
+    fn set_face_normal(&mut self, ray: &Ray, outward_normal: &Vector3<f64>) {
+        self.front_face = ray.direction.dot(outward_normal) < 0.;
+        self.normal = if self.front_face {
+            *outward_normal
+        } else {
+            -*outward_normal
+        };
+    }
+}
+
+trait Hittable {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
+}
+
+struct HittableList<T>
+where
+    T: Hittable,
+{
+    objects: Vec<T>,
+}
+
+impl<T> HittableList<T>
+where
+    T: Hittable,
+{
+    fn new() -> Self {
+        HittableList {
+            objects: Vec::new(),
+        }
+    }
+
+    fn add(&mut self, object: T) {
+        self.objects.push(object);
+    }
+
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let mut hit_anything = None;
+        let mut closest_so_far = t_max;
+
+        for object in &self.objects {
+            // get a hit_record of the closest object by passing
+            // closest_so_far as t_max
+            match object.hit(ray, t_min, closest_so_far) {
+                Some(hit_record) => {
+                    closest_so_far = hit_record.t;
+                    hit_anything = Some(hit_record);
+                }
+                None => (),
+            }
+        }
+        hit_anything
+    }
+}
+
+struct Sphere {
+    center: Vector3<f64>,
+    radius: f64,
+}
+
+impl Hittable for Sphere {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let oc = ray.origin - self.center;
+        let a = ray.direction.dot(&ray.direction);
+        let half_b = oc.dot(&ray.direction);
+        let c = oc.dot(&oc) - self.radius * self.radius;
+
+        let discriminant = half_b * half_b - a * c;
+
+        if discriminant < 0. {
+            return None;
+        }
+        let sqrtd = sqrt(discriminant);
+
+        // Find the nearest root that lies in the acceptable range.
+        let root = (-half_b - sqrtd) / a;
+        if root < t_min || root > t_max {
+            return None;
+        }
+
+        let mut hit_record = HitRecord {
+            p: ray.at(root),
+            t: root,
+            ..Default::default()
+        };
+        let outward_normal = (ray.at(root) - self.center) / self.radius;
+        hit_record.set_face_normal(ray, &outward_normal);
+        Some(hit_record)
+    }
+}
+
 fn draw(context: &CanvasRenderingContext2d) {
     let mut info = Info::new();
+
+    //
+    // World
+    //
+    let mut world = HittableList::new();
+    world.add(Sphere {
+        center: Vector3::new(0., 0., -1.),
+        radius: 0.5,
+    });
+    world.add(Sphere {
+        center: Vector3::new(0., -100.5, -1.),
+        radius: 100.,
+    });
 
     //
     // Camera
@@ -92,21 +209,25 @@ fn draw(context: &CanvasRenderingContext2d) {
 
             let u = x as f64 / (WIDTH - 1) as f64;
             let v = 1. - (y as f64 / (HEIGHT - 1) as f64);
+
             let ray = Ray::new(
                 origin,
                 lower_left_corner + u * horizontal + v * vertical - origin,
             );
-            let pixel_color = ray_color(&ray);
+
+            let pixel_color = ray_color(&ray, &world);
             write_color(&context, x, y, pixel_color);
         }
     }
     log!("Done!");
 }
 
-fn ray_color(ray: &Ray) -> Color {
-    if let Some(t) = hit_sphere(Vector3::new(0., 0., -1.), 0.5, ray) {
-        let n: Vector3<f64> = (ray.at(t) - Vector3::new(0., 0., -1.)).normalize();
-        return 0.5 * (n + Vector3::new(1., 1., 1.));
+fn ray_color<T>(ray: &Ray, world: &HittableList<T>) -> Color
+where
+    T: Hittable,
+{
+    if let Some(hit_record) = world.hit(ray, 0., INFINITY) {
+        return 0.5 * (hit_record.normal + Vector3::new(1., 1., 1.));
     }
     let unit_direction = ray.direction.normalize();
     let t = 0.5 * (unit_direction.y + 1.);
@@ -127,17 +248,4 @@ fn write_color(context: &CanvasRenderingContext2d, x: u32, y: u32, color: Color)
     ));
     context.set_fill_style(&color);
     context.fill_rect(px, py, px + RESOLUTION as f64, py + RESOLUTION as f64);
-}
-
-fn hit_sphere(center: Vector3<f64>, radius: f64, ray: &Ray) -> Option<f64> {
-    let oc = ray.origin - center;
-    let a = ray.direction.dot(&ray.direction);
-    let b = 2. * oc.dot(&ray.direction);
-    let c = oc.dot(&oc) - radius * radius;
-    let discriminant = b * b - 4. * a * c;
-    if discriminant < 0. {
-        None
-    } else {
-        Some((-b - sqrt(discriminant)) / (2. * a))
-    }
 }
