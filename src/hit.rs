@@ -5,7 +5,7 @@ use crate::ray::Ray;
 
 #[derive(Default)]
 pub struct HitRecord {
-    p: Vector3<f64>,
+    pub p: Vector3<f64>,
     t: f64,
     pub normal: Vector3<f64>,
     // front_face := ray dot normal < 0.

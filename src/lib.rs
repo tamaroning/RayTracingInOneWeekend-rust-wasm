@@ -4,6 +4,7 @@ mod hit;
 
 use hit::Hittable;
 use nalgebra::Vector3;
+use rand::prelude::ThreadRng;
 use std::f64::INFINITY;
 use utils::*;
 use wasm_bindgen::prelude::*;
@@ -15,7 +16,7 @@ use hit::{HittableList, Sphere};
 const ASPECT_RATIO: f64 = 16. / 9.;
 const WIDTH: u32 = 512;
 const HEIGHT: u32 = (WIDTH as f64 / ASPECT_RATIO) as u32;
-const RESOLUTION: u32 = 10;
+const RESOLUTION: u32 = 1;
 const SAMPLES_PER_PIXEL: u32 = 4;
 
 // (r, g, b) = (x, y, z)
@@ -143,7 +144,7 @@ fn draw(context: &CanvasRenderingContext2d) {
 
                 let ray = camera.get_ray(u, v);
 
-                pixel_color += ray_color(&ray, &world);
+                pixel_color += ray_color(&ray, &world, &mut rng);
             }
             write_color(&context, x, y, pixel_color);
         }
@@ -151,12 +152,15 @@ fn draw(context: &CanvasRenderingContext2d) {
     log!("Done!");
 }
 
-fn ray_color<T>(ray: &Ray, world: &HittableList<T>) -> Color
+fn ray_color<T>(ray: &Ray, world: &HittableList<T>, rng: &mut ThreadRng) -> Color
 where
     T: Hittable,
 {
     let color = match world.hit(ray, 0., INFINITY) {
-        Some(hit_record) => 0.5 * (hit_record.normal + Vector3::new(1., 1., 1.)),
+        Some(hit_record) => {
+            let target = hit_record.p + hit_record.normal + random_vec3_in_unit_spehere(rng);
+            0.5 * ray_color(&Ray::new(hit_record.p, target - hit_record.p), world, rng)
+        },
         None => {
             let unit_direction = ray.direction.normalize();
             let t = 0.5 * (unit_direction.y + 1.);
