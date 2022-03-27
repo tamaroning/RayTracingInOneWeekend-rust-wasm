@@ -1,3 +1,6 @@
+use std::f64::consts::PI;
+
+use js_sys::Math::{sqrt, cos, sin};
 use nalgebra::Vector3;
 use rand::{prelude::ThreadRng, Rng};
 
@@ -63,4 +66,11 @@ pub fn random_vec3_in_unit_spehere(rng: &mut ThreadRng) -> Vector3<f64> {
             return v;
         }
     }
+}
+
+pub fn random_unit_vector(rng: &mut ThreadRng) -> Vector3<f64> {
+    let a = random_f64(rng, 0., 2. * PI);
+    let z = random_f64(rng, - 1., 1.);
+    let r = sqrt(1. - z * z);
+    Vector3::new(r * cos(a), r * sin(a), z)
 }
