@@ -1,13 +1,16 @@
 mod utils;
+mod ray;
+mod hit;
 
-use js_sys::Math::sqrt;
+use hit::Hittable;
 use nalgebra::Vector3;
-use rand::Rng;
 use std::f64::INFINITY;
 use utils::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::CanvasRenderingContext2d;
+use ray::Ray;
+use hit::{HittableList, Sphere};
 
 const ASPECT_RATIO: f64 = 16. / 9.;
 const WIDTH: u32 = 512;
@@ -48,122 +51,6 @@ pub fn start() -> Result<(), JsValue> {
     draw(&context);
 
     Ok(())
-}
-
-struct Ray {
-    origin: Vector3<f64>,
-    direction: Vector3<f64>,
-}
-
-impl Ray {
-    fn new(origin: Vector3<f64>, direction: Vector3<f64>) -> Self {
-        Ray { origin, direction }
-    }
-    fn at(&self, t: f64) -> Vector3<f64> {
-        self.origin + t * self.direction
-    }
-}
-
-#[derive(Default)]
-struct HitRecord {
-    p: Vector3<f64>,
-    t: f64,
-    normal: Vector3<f64>,
-    // front_face := ray dot normal < 0.
-    // i.e. true  => ray hits front of surface
-    //      false => ray hits front of surface
-    front_face: bool,
-}
-
-impl HitRecord {
-    fn set_face_normal(&mut self, ray: &Ray, outward_normal: &Vector3<f64>) {
-        self.front_face = ray.direction.dot(outward_normal) < 0.;
-        self.normal = if self.front_face {
-            *outward_normal
-        } else {
-            -*outward_normal
-        };
-    }
-}
-
-trait Hittable {
-    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
-}
-
-struct HittableList<T>
-where
-    T: Hittable,
-{
-    objects: Vec<T>,
-}
-
-impl<T> HittableList<T>
-where
-    T: Hittable,
-{
-    fn new() -> Self {
-        HittableList {
-            objects: Vec::new(),
-        }
-    }
-
-    fn add(&mut self, object: T) {
-        self.objects.push(object);
-    }
-
-    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
-        let mut hit_anything = None;
-        let mut closest_so_far = t_max;
-
-        for object in &self.objects {
-            // get a hit_record of the closest object by passing
-            // closest_so_far as t_max
-            match object.hit(ray, t_min, closest_so_far) {
-                Some(hit_record) => {
-                    closest_so_far = hit_record.t;
-                    hit_anything = Some(hit_record);
-                }
-                None => (),
-            }
-        }
-        hit_anything
-    }
-}
-
-struct Sphere {
-    center: Vector3<f64>,
-    radius: f64,
-}
-
-impl Hittable for Sphere {
-    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
-        let oc = ray.origin - self.center;
-        let a = ray.direction.dot(&ray.direction);
-        let half_b = oc.dot(&ray.direction);
-        let c = oc.dot(&oc) - self.radius * self.radius;
-
-        let discriminant = half_b * half_b - a * c;
-
-        if discriminant < 0. {
-            return None;
-        }
-        let sqrtd = sqrt(discriminant);
-
-        // Find the nearest root that lies in the acceptable range.
-        let root = (-half_b - sqrtd) / a;
-        if root < t_min || root > t_max {
-            return None;
-        }
-
-        let mut hit_record = HitRecord {
-            p: ray.at(root),
-            t: root,
-            ..Default::default()
-        };
-        let outward_normal = (ray.at(root) - self.center) / self.radius;
-        hit_record.set_face_normal(ray, &outward_normal);
-        Some(hit_record)
-    }
 }
 
 #[allow(dead_code)]
