@@ -8,7 +8,7 @@ use web_sys::CanvasRenderingContext2d;
 const ASPECT_RATIO: f64 = 16.0 / 9.0;
 const WIDTH: u32 = 512;
 const HEIGHT: u32 = (WIDTH as f64 / ASPECT_RATIO) as u32;
-const RESOLUTION: u32 = 16;
+const RESOLUTION: u32 = 8;
 
 // (r, g, b) = (x, y, z)
 type Color = Vector3<f64>;
@@ -91,19 +91,22 @@ fn draw(context: &CanvasRenderingContext2d) {
 
             let u = x as f64 / (WIDTH - 1) as f64;
             let v = y as f64 / (HEIGHT - 1) as f64;
-            let r = Ray::new(
+            let ray = Ray::new(
                 origin,
                 lower_left_corner + u * horizontal + v * vertical - origin,
             );
-            let pixel_color = ray_color(r);
+            let pixel_color = ray_color(&ray);
             write_color(&context, x, y, pixel_color);
         }
     }
     log!("Done!");
 }
 
-fn ray_color(r: Ray) -> Color {
-    let unit_direction = r.direction.normalize();
+fn ray_color(ray: &Ray) -> Color {
+    if hit_sphere(Vector3::new(0., 0., -1.), 0.5, ray) {
+        return Color::new(1., 0., 0.);
+    }
+    let unit_direction = ray.direction.normalize();
     let t = 0.5 * (unit_direction.y + 1.0);
     (1.0 - t) * Color::new(1.0, 1.0, 1.0) + t * Color::new(0.5, 0.7, 1.0)
 }
@@ -122,4 +125,13 @@ fn write_color(context: &CanvasRenderingContext2d, x: u32, y: u32, color: Color)
     ));
     context.set_fill_style(&color);
     context.fill_rect(px, py, px + RESOLUTION as f64, py + RESOLUTION as f64);
+}
+
+fn hit_sphere(center: Vector3<f64>, radius: f64, ray: &Ray) -> bool {
+    let oc = ray.origin - center;
+    let a = ray.direction.dot(&ray.direction);
+    let b = 2.0 * oc.dot(&ray.direction);
+    let c = oc.dot(&oc) - radius * radius;
+    let discriminant = b * b - 4.0 * a * c;
+    discriminant > 0.
 }
