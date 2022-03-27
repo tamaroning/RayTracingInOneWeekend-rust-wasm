@@ -8,7 +8,7 @@ use web_sys::CanvasRenderingContext2d;
 const ASPECT_RATIO: f64 = 16.0 / 9.0;
 const WIDTH: u32 = 512;
 const HEIGHT: u32 = (WIDTH as f64 / ASPECT_RATIO) as u32;
-const RESOLUTION: u32 = 8;
+const RESOLUTION: u32 = 1;
 
 // (r, g, b) = (x, y, z)
 type Color = Vector3<f64>;
@@ -90,7 +90,7 @@ fn draw(context: &CanvasRenderingContext2d) {
             }
 
             let u = x as f64 / (WIDTH - 1) as f64;
-            let v = y as f64 / (HEIGHT - 1) as f64;
+            let v = 1.0 - (y as f64 / (HEIGHT - 1) as f64);
             let ray = Ray::new(
                 origin,
                 lower_left_corner + u * horizontal + v * vertical - origin,

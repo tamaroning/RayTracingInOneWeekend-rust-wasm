@@ -1,5 +1,5 @@
 # rust-wasm-raytracing
-Rust+wasm+WebGL
+Rust+wasm+Canvas2D
 
 ## Requirement
 - wasm-pack
