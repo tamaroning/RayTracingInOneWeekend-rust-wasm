@@ -1,3 +1,6 @@
+use nalgebra::Vector3;
+use rand::{prelude::ThreadRng, Rng};
+
 // This macro is retrived from https://github.com/lykhouzov/rust-wasm-webgl/blob/master/src/utils.rs
 #[macro_export]
 macro_rules! float_32_array {
@@ -31,5 +34,23 @@ macro_rules! uint_16_array {
 macro_rules! log {
     ( $( $t:tt )* ) => {
         web_sys::console::log_1(&format!( $( $t )* ).into());
+    }
+}
+
+pub fn random_f64(rng: &mut ThreadRng, min: f64, max: f64) -> f64 {
+    rng.gen::<f64>() * (max - min) + min
+}
+
+pub fn random_vec3(rng: &mut ThreadRng) -> Vector3<f64> {
+    Vector3::new(rng.gen::<f64>(), rng.gen::<f64>(), rng.gen::<f64>())
+}
+
+pub fn random_vec3_in_unit_spehere(rng: &mut ThreadRng) -> Vector3<f64> {
+    loop {
+        let v = random_vec3(rng);
+        // FIXME: use sqnorm
+        if v.norm() < 1. {
+            return v;
+        }
     }
 }

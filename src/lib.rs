@@ -1,10 +1,10 @@
 mod utils;
 
-use std::f64::INFINITY;
-
 use js_sys::Math::sqrt;
 use nalgebra::Vector3;
 use rand::Rng;
+use std::f64::INFINITY;
+use utils::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::CanvasRenderingContext2d;
@@ -12,7 +12,7 @@ use web_sys::CanvasRenderingContext2d;
 const ASPECT_RATIO: f64 = 16. / 9.;
 const WIDTH: u32 = 512;
 const HEIGHT: u32 = (WIDTH as f64 / ASPECT_RATIO) as u32;
-const RESOLUTION: u32 = 1;
+const RESOLUTION: u32 = 10;
 const SAMPLES_PER_PIXEL: u32 = 4;
 
 // (r, g, b) = (x, y, z)
@@ -248,9 +248,11 @@ fn draw(context: &CanvasRenderingContext2d) {
 
             let mut pixel_color = Color::new(0., 0., 0.);
             for _ in 0..SAMPLES_PER_PIXEL {
-                let u = (x as f64 + rng.gen::<f64>() * RESOLUTION as f64) / (WIDTH - 1) as f64;
-                let v =
-                    1. - (y as f64 + rng.gen::<f64>() * RESOLUTION as f64) / (HEIGHT - 1) as f64;
+                let u =
+                    (x as f64 + random_f64(&mut rng, 0., RESOLUTION as f64)) / (WIDTH - 1) as f64;
+                let v = 1.
+                    - (y as f64 + random_f64(&mut rng, 0., RESOLUTION as f64))
+                        / (HEIGHT - 1) as f64;
 
                 let ray = camera.get_ray(u, v);
 
@@ -278,7 +280,7 @@ where
 }
 
 fn write_color(context: &CanvasRenderingContext2d, x: u32, y: u32, color: Color) {
-    let (r, g, b, a) = (color.x, color.y, color.z, 1.);
+    let (r, g, b) = (color.x, color.y, color.z);
     let px = x as f64;
     let py = y as f64;
     let color = JsValue::from_str(&format!(
@@ -286,7 +288,7 @@ fn write_color(context: &CanvasRenderingContext2d, x: u32, y: u32, color: Color)
         255. * r,
         255. * g,
         255. * b,
-        255. * a
+        255.
     ));
     context.set_fill_style(&color);
     context.fill_rect(px, py, px + RESOLUTION as f64, py + RESOLUTION as f64);
