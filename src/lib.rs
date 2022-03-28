@@ -21,8 +21,8 @@ use crate::material::{Lambertian, Metal};
 const ASPECT_RATIO: f64 = 16. / 9.;
 const WIDTH: u32 = 512;
 const HEIGHT: u32 = (WIDTH as f64 / ASPECT_RATIO) as u32;
-const RESOLUTION: u32 = 10;
-const SAMPLES_PER_PIXEL: u32 = 30;
+const RESOLUTION: u32 = 1;
+const SAMPLES_PER_PIXEL: u32 = 10;
 const MAX_DEPTH: i32 = 30;
 
 // (r, g, b) = (x, y, z)
@@ -115,8 +115,8 @@ fn draw(context: &CanvasRenderingContext2d) {
 
     let material_ground = Lambertian::new(Color::new(0.8, 0.8, 0.));
     let material_center = Lambertian::new(Color::new(0.7, 0.3, 0.3));
-    let material_left = Metal::new(Color::new(0.8, 0.8, 0.8));
-    let material_right = Metal::new(Color::new(0.8, 0.6, 0.2));
+    let material_left = Metal::new(Color::new(0.8, 0.8, 0.8), 0.3);
+    let material_right = Metal::new(Color::new(0.8, 0.6, 0.2), 1.);
 
     world.add(Sphere {
         center: Vector3::new(0., -100.5, -1.),
