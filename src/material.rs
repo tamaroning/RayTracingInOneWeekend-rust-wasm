@@ -3,7 +3,7 @@ use rand::prelude::ThreadRng;
 use super::Color;
 use crate::hit::HitRecord;
 use crate::ray::Ray;
-use crate::utils::{random_unit_vector, near_zero};
+use crate::utils::{near_zero, random_unit_vector, reflect};
 
 pub trait Material {
     fn scatter(
@@ -50,23 +50,24 @@ pub struct Metal {
 
 impl Metal {
     pub fn new(albedo: Color) -> Self {
-        Metal {
-            albedo
-        }
+        Metal { albedo }
     }
 }
 
 impl Material for Metal {
     fn scatter(
         &self,
-        _ray: &Ray,
+        ray_in: &Ray,
         hit_record: &HitRecord,
-        rng: &mut ThreadRng,
+        _rng: &mut ThreadRng,
     ) -> Option<(Ray, Color)> {
-        let scattered_direction = hit_record.normal + random_unit_vector(rng);
-        let scattered = Ray::new(hit_record.p, scattered_direction);
-        let attenuation = self.albedo;
-        Some((scattered, attenuation))
+        let reflected = reflect(&ray_in.direction.normalize(), &hit_record.normal);
+        let scattered = Ray::new(hit_record.p, reflected);
+        if scattered.direction.dot(&hit_record.normal) > 0. {
+            let attenuation = self.albedo;
+            Some((scattered, attenuation))
+        } else {
+            None
+        }
     }
 }
-
