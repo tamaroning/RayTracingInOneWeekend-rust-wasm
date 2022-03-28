@@ -7,12 +7,11 @@ use crate::utils::random_unit_vector;
 
 pub trait Material {
     fn scatter(
-        ray: &Ray,
-        hit_record: HitRecord,
-        attenuation: Color,
-        scattered: &Ray,
+        &self,
+        _ray: &Ray,
+        hit_record: &HitRecord,
         rng: &mut ThreadRng,
-    );
+    ) -> Option<(Ray, Color)>;
 }
 
 pub struct Lambertian {
@@ -25,8 +24,8 @@ impl Lambertian {
     }
 }
 
-impl Lambertian {
-    pub fn scatter(
+impl Material for Lambertian {
+    fn scatter(
         &self,
         _ray: &Ray,
         hit_record: &HitRecord,
