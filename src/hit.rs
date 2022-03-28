@@ -3,7 +3,7 @@ use std::rc::Rc;
 use js_sys::Math::sqrt;
 use nalgebra::Vector3;
 
-use crate::material::Lambertian;
+use crate::material::Material;
 use crate::ray::Ray;
 
 pub struct HitRecord {
@@ -15,7 +15,7 @@ pub struct HitRecord {
     //      false => ray hits front of surface
     pub front_face: bool,
 
-    pub material: Rc<Lambertian>,
+    pub material: Rc<dyn Material>,
 }
 
 impl HitRecord {
@@ -76,7 +76,7 @@ where
 pub struct Sphere {
     pub center: Vector3<f64>,
     pub radius: f64,
-    pub material: Rc<Lambertian>,
+    pub material: Rc<dyn Material>,
 }
 
 impl Hittable for Sphere {
