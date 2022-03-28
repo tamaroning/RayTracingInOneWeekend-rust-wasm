@@ -1,6 +1,6 @@
 use std::f64::consts::PI;
 
-use js_sys::Math::{sqrt, cos, sin};
+use js_sys::Math::{cos, sin, sqrt};
 use nalgebra::Vector3;
 use rand::{prelude::ThreadRng, Rng};
 
@@ -73,7 +73,16 @@ pub fn random_vec3_in_unit_spehere(rng: &mut ThreadRng) -> Vector3<f64> {
 // 2
 pub fn random_unit_vector(rng: &mut ThreadRng) -> Vector3<f64> {
     let a = random_f64(rng, 0., 2. * PI);
-    let z = random_f64(rng, - 1., 1.);
+    let z = random_f64(rng, -1., 1.);
     let r = sqrt(1. - z * z);
     Vector3::new(r * cos(a), r * sin(a), z)
+}
+
+pub fn reflect(v: &Vector3<f64>, n: &Vector3<f64>) -> Vector3<f64> {
+    v - 2. * v.dot(n) * n
+}
+
+pub fn near_zero(v: &Vector3<f64>) -> bool {
+    let s = 1e-8;
+    (v.x < s) && (v.y < s) && (v.z < s)
 }

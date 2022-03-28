@@ -1,9 +1,11 @@
+use std::rc::Rc;
+
 use js_sys::Math::sqrt;
 use nalgebra::Vector3;
 
+use crate::material::Lambertian;
 use crate::ray::Ray;
 
-#[derive(Default)]
 pub struct HitRecord {
     pub p: Vector3<f64>,
     t: f64,
@@ -12,6 +14,8 @@ pub struct HitRecord {
     // i.e. true  => ray hits front of surface
     //      false => ray hits front of surface
     pub front_face: bool,
+
+    pub material: Rc<Lambertian>,
 }
 
 impl HitRecord {
@@ -72,6 +76,7 @@ where
 pub struct Sphere {
     pub center: Vector3<f64>,
     pub radius: f64,
+    pub material: Rc<Lambertian>,
 }
 
 impl Hittable for Sphere {
@@ -97,7 +102,9 @@ impl Hittable for Sphere {
         let mut hit_record = HitRecord {
             p: ray.at(root),
             t: root,
-            ..Default::default()
+            normal: Default::default(),
+            front_face: Default::default(),
+            material: Rc::clone(&self.material),
         };
         let outward_normal = (ray.at(root) - self.center) / self.radius;
         hit_record.set_face_normal(ray, &outward_normal);

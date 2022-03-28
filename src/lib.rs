@@ -1,4 +1,5 @@
 mod hit;
+mod material;
 mod ray;
 mod utils;
 
@@ -9,15 +10,18 @@ use nalgebra::Vector3;
 use rand::prelude::ThreadRng;
 use ray::Ray;
 use std::f64::INFINITY;
+use std::rc::Rc;
 use utils::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use web_sys::CanvasRenderingContext2d;
 
+use crate::material::Lambertian;
+
 const ASPECT_RATIO: f64 = 16. / 9.;
 const WIDTH: u32 = 512;
 const HEIGHT: u32 = (WIDTH as f64 / ASPECT_RATIO) as u32;
-const RESOLUTION: u32 = 2;
+const RESOLUTION: u32 = 4;
 const SAMPLES_PER_PIXEL: u32 = 6;
 const MAX_DEPTH: i32 = 10;
 
@@ -111,10 +115,12 @@ fn draw(context: &CanvasRenderingContext2d) {
     world.add(Sphere {
         center: Vector3::new(0., 0., -1.),
         radius: 0.5,
+        material: Rc::new(Lambertian::new(Color::new(0.7, 0.3, 0.3))),
     });
     world.add(Sphere {
         center: Vector3::new(0., -100.5, -1.),
         radius: 100.,
+        material: Rc::new(Lambertian::new(Color::new(0.8, 0.8, 0.))),
     });
 
     //
@@ -164,13 +170,15 @@ where
     }
     match world.hit(ray, 0.001, INFINITY) {
         Some(hit_record) => {
-            let target = hit_record.p + hit_record.normal + random_unit_vector(rng);
-            0.5 * ray_color(
-                &Ray::new(hit_record.p, target - hit_record.p),
-                world,
-                rng,
-                depth - 1,
-            )
+            match hit_record.material.scatter(ray, &hit_record, rng) {
+                Some((scattered, attenuation)) => {
+                    // FIXME: in place
+                    return attenuation.component_mul(&ray_color(&scattered, world, rng, depth));
+                }
+                None => {
+                    return Color::new(0., 0., 0.);
+                }
+            }
         }
         None => {
             let unit_direction = ray.direction.normalize();
