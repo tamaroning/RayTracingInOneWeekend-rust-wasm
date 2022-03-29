@@ -1,11 +1,13 @@
+mod camera;
 mod hit;
 mod material;
 mod ray;
 mod utils;
 
+use camera::Camera;
 use hit::Hittable;
 use hit::{HittableList, Sphere};
-use js_sys::Math::{sqrt, tan};
+use js_sys::Math::sqrt;
 use nalgebra::Vector3;
 use rand::prelude::ThreadRng;
 use ray::Ray;
@@ -60,51 +62,6 @@ pub fn start() -> Result<(), JsValue> {
     Ok(())
 }
 
-#[allow(dead_code)]
-struct Camera {
-    origin: Vector3<f64>,
-    horizontal: Vector3<f64>,
-    vertical: Vector3<f64>,
-    lower_left_corner: Vector3<f64>,
-}
-
-impl Camera {
-    // See https://raytracing.github.io/books/RayTracingInOneWeekend.html#positionablecamera/positioningandorientingthecamera
-    fn new(
-        lookfrom: Vector3<f64>,
-        lookat: Vector3<f64>,
-        vup: Vector3<f64>,
-        vfov: f64, /* vertical field-of-view in degrees */
-    ) -> Self {
-        let theta = deg_to_rad(vfov);
-        let h = tan(theta / 2.);
-        let viewport_height: f64 = 2. * h;
-        let viewport_width: f64 = ASPECT_RATIO * viewport_height;
-
-        let w = (lookfrom - lookat).normalize();
-        let u = vup.cross(&w).normalize();
-        let v = w.cross(&u);
-
-        let origin = lookfrom;
-        let horizontal = viewport_width * u;
-        let vertical = viewport_height * v;
-
-        Camera {
-            origin,
-            horizontal,
-            vertical,
-            lower_left_corner: lookfrom - horizontal / 2. - vertical / 2. - w,
-        }
-    }
-
-    fn get_ray(&self, s: f64, t: f64) -> Ray {
-        Ray::new(
-            self.origin,
-            self.lower_left_corner + s * self.horizontal + t * self.vertical - self.origin,
-        )
-    }
-}
-
 fn draw(context: &CanvasRenderingContext2d) {
     let mut info = Info::new();
     let mut rng = rand::thread_rng();
@@ -155,6 +112,7 @@ fn draw(context: &CanvasRenderingContext2d) {
         Vector3::new(0., 0., -1.),
         Vector3::new(0., 1., 0.),
         20.,
+        ASPECT_RATIO,
     );
 
     //
