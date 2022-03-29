@@ -5,11 +5,10 @@ mod utils;
 
 use hit::Hittable;
 use hit::{HittableList, Sphere};
-use js_sys::Math::{cos, sqrt, tan};
+use js_sys::Math::{sqrt, tan};
 use nalgebra::Vector3;
 use rand::prelude::ThreadRng;
 use ray::Ray;
-use std::f64::consts::PI;
 use std::f64::INFINITY;
 use std::rc::Rc;
 use utils::*;
@@ -22,7 +21,7 @@ use crate::material::{Dielectic, Lambertian, Metal};
 const ASPECT_RATIO: f64 = 16. / 9.;
 const WIDTH: u32 = 512;
 const HEIGHT: u32 = (WIDTH as f64 / ASPECT_RATIO) as u32;
-const RESOLUTION: u32 = 8;
+const RESOLUTION: u32 = 1;
 const SAMPLES_PER_PIXEL: u32 = 8;
 const MAX_DEPTH: i32 = 5;
 
@@ -70,33 +69,38 @@ struct Camera {
 }
 
 impl Camera {
-    fn new(vfov: f64 /* vertical field-of-view in degrees */) -> Self {
+    // See https://raytracing.github.io/books/RayTracingInOneWeekend.html#positionablecamera/positioningandorientingthecamera
+    fn new(
+        lookfrom: Vector3<f64>,
+        lookat: Vector3<f64>,
+        vup: Vector3<f64>,
+        vfov: f64, /* vertical field-of-view in degrees */
+    ) -> Self {
         let theta = deg_to_rad(vfov);
         let h = tan(theta / 2.);
-
         let viewport_height: f64 = 2. * h;
         let viewport_width: f64 = ASPECT_RATIO * viewport_height;
 
-        let forcal_length: f64 = 1.;
+        let w = (lookfrom - lookat).normalize();
+        let u = vup.cross(&w).normalize();
+        let v = w.cross(&u);
 
-        let origin = Vector3::new(0., 0., 0.);
-        let horizontal = Vector3::new(viewport_width, 0., 0.);
-        let vertical = Vector3::new(0., viewport_height, 0.);
-        let lower_left_corner =
-            origin - horizontal / 2. - vertical / 2. - Vector3::new(0., 0., forcal_length);
+        let origin = lookfrom;
+        let horizontal = viewport_width * u;
+        let vertical = viewport_height * v;
 
         Camera {
             origin,
             horizontal,
             vertical,
-            lower_left_corner,
+            lower_left_corner: lookfrom - horizontal / 2. - vertical / 2. - w,
         }
     }
 
-    fn get_ray(&self, u: f64, v: f64) -> Ray {
+    fn get_ray(&self, s: f64, t: f64) -> Ray {
         Ray::new(
             self.origin,
-            self.lower_left_corner + u * self.horizontal + v * self.vertical - self.origin,
+            self.lower_left_corner + s * self.horizontal + t * self.vertical - self.origin,
         )
     }
 }
@@ -108,25 +112,8 @@ fn draw(context: &CanvasRenderingContext2d) {
     //
     // World
     //
-    let r = cos(PI / 4.);
-
     let mut world = HittableList::new();
 
-    let material_left = Lambertian::new(Color::new(0., 0., 1.));
-    let material_right = Lambertian::new(Color::new(1., 0., 0.));
-
-    world.add(Sphere {
-        center: Vector3::new(-r, 0., -1.),
-        radius: r,
-        material: Rc::new(material_left),
-    });
-    world.add(Sphere {
-        center: Vector3::new(r, 0., -1.),
-        radius: r,
-        material: Rc::new(material_right),
-    });
-
-    /*
     let material_ground = Lambertian::new(Color::new(0.8, 0.8, 0.));
     let material_center = Lambertian::new(Color::new(0.1, 0.2, 0.5));
     let material_left = Dielectic::new(1.5); //Metal::new(Color::new(0.8, 0.8, 0.8), 0.3);
@@ -159,12 +146,16 @@ fn draw(context: &CanvasRenderingContext2d) {
         radius: 0.5,
         material: Rc::new(material_right),
     });
-    */
 
     //
     // Camera
     //
-    let camera = Camera::new(90.);
+    let camera = Camera::new(
+        Vector3::new(-2., 2., 1.),
+        Vector3::new(0., 0., -1.),
+        Vector3::new(0., 1., 0.),
+        20.,
+    );
 
     //
     // Render
