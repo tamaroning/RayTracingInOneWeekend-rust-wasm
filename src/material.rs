@@ -4,7 +4,7 @@ use rand::prelude::ThreadRng;
 use super::Color;
 use crate::hit::HitRecord;
 use crate::ray::Ray;
-use crate::utils::{near_zero, random_unit_vector, reflect, refract};
+use crate::utils::*;
 
 pub trait Material {
     fn scatter(
@@ -77,6 +77,7 @@ impl Material for Metal {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct Dielectic {
     refraction_idx: f64,
 }
@@ -94,7 +95,7 @@ impl Material for Dielectic {
         &self,
         ray_in: &Ray,
         hit_record: &HitRecord,
-        _rng: &mut ThreadRng,
+        rng: &mut ThreadRng,
     ) -> Option<(Ray, Color)> {
         let attenuation = Color::new(1., 1., 1.);
         let refraction_ratio = if hit_record.front_face {
@@ -108,7 +109,9 @@ impl Material for Dielectic {
         let sin_theta = sqrt(1. - cos_theta * cos_theta);
 
         let cannot_reflact = refraction_ratio * sin_theta > 1.;
-        let direction = if cannot_reflact {
+        let direction = if cannot_reflact
+            || reflectance(cos_theta, refraction_ratio) > random_f64(rng, 0., 1.)
+        {
             reflect(&unit_direction, &hit_record.normal)
         } else {
             refract(&unit_direction, &hit_record.normal, refraction_ratio)

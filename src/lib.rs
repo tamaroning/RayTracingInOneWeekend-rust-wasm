@@ -5,10 +5,11 @@ mod utils;
 
 use hit::Hittable;
 use hit::{HittableList, Sphere};
-use js_sys::Math::sqrt;
+use js_sys::Math::{cos, sqrt, tan};
 use nalgebra::Vector3;
 use rand::prelude::ThreadRng;
 use ray::Ray;
+use std::f64::consts::PI;
 use std::f64::INFINITY;
 use std::rc::Rc;
 use utils::*;
@@ -21,9 +22,9 @@ use crate::material::{Dielectic, Lambertian, Metal};
 const ASPECT_RATIO: f64 = 16. / 9.;
 const WIDTH: u32 = 512;
 const HEIGHT: u32 = (WIDTH as f64 / ASPECT_RATIO) as u32;
-const RESOLUTION: u32 = 4;
-const SAMPLES_PER_PIXEL: u32 = 10;
-const MAX_DEPTH: i32 = 10;
+const RESOLUTION: u32 = 8;
+const SAMPLES_PER_PIXEL: u32 = 8;
+const MAX_DEPTH: i32 = 5;
 
 // (r, g, b) = (x, y, z)
 type Color = Vector3<f64>;
@@ -62,10 +63,6 @@ pub fn start() -> Result<(), JsValue> {
 
 #[allow(dead_code)]
 struct Camera {
-    viewport_height: f64,
-    viewport_width: f64,
-    forcal_length: f64,
-
     origin: Vector3<f64>,
     horizontal: Vector3<f64>,
     vertical: Vector3<f64>,
@@ -73,9 +70,13 @@ struct Camera {
 }
 
 impl Camera {
-    fn new() -> Self {
-        let viewport_height: f64 = 2.;
+    fn new(vfov: f64 /* vertical field-of-view in degrees */) -> Self {
+        let theta = deg_to_rad(vfov);
+        let h = tan(theta / 2.);
+
+        let viewport_height: f64 = 2. * h;
         let viewport_width: f64 = ASPECT_RATIO * viewport_height;
+
         let forcal_length: f64 = 1.;
 
         let origin = Vector3::new(0., 0., 0.);
@@ -85,10 +86,6 @@ impl Camera {
             origin - horizontal / 2. - vertical / 2. - Vector3::new(0., 0., forcal_length);
 
         Camera {
-            viewport_height,
-            viewport_width,
-            forcal_length,
-
             origin,
             horizontal,
             vertical,
@@ -111,12 +108,29 @@ fn draw(context: &CanvasRenderingContext2d) {
     //
     // World
     //
+    let r = cos(PI / 4.);
+
     let mut world = HittableList::new();
 
+    let material_left = Lambertian::new(Color::new(0., 0., 1.));
+    let material_right = Lambertian::new(Color::new(1., 0., 0.));
+
+    world.add(Sphere {
+        center: Vector3::new(-r, 0., -1.),
+        radius: r,
+        material: Rc::new(material_left),
+    });
+    world.add(Sphere {
+        center: Vector3::new(r, 0., -1.),
+        radius: r,
+        material: Rc::new(material_right),
+    });
+
+    /*
     let material_ground = Lambertian::new(Color::new(0.8, 0.8, 0.));
     let material_center = Lambertian::new(Color::new(0.1, 0.2, 0.5));
     let material_left = Dielectic::new(1.5); //Metal::new(Color::new(0.8, 0.8, 0.8), 0.3);
-    let material_right = Metal::new(Color::new(0.8, 0.6, 0.2), 1.);
+    let material_right = Metal::new(Color::new(0.8, 0.6, 0.2), 0.);
 
     world.add(Sphere {
         center: Vector3::new(0., -100.5, -1.),
@@ -128,21 +142,29 @@ fn draw(context: &CanvasRenderingContext2d) {
         radius: 0.5,
         material: Rc::new(material_center),
     });
-    world.add(Sphere {
-        center: Vector3::new(-1., 0., -1.),
-        radius: 0.5,
-        material: Rc::new(material_left),
-    });
+    {
+        world.add(Sphere {
+            center: Vector3::new(-1., 0., -1.),
+            radius: 0.5,
+            material: Rc::new(material_left.clone()),
+        });
+        world.add(Sphere {
+            center: Vector3::new(-1., 0., -1.),
+            radius: -0.45,
+            material: Rc::new(material_left),
+        });
+    }
     world.add(Sphere {
         center: Vector3::new(1., 0., -1.),
         radius: 0.5,
         material: Rc::new(material_right),
     });
+    */
 
     //
     // Camera
     //
-    let camera = Camera::new();
+    let camera = Camera::new(90.);
 
     //
     // Render

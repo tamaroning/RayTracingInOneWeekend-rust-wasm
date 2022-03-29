@@ -89,10 +89,21 @@ pub fn near_zero(v: &Vector3<f64>) -> bool {
 pub fn refract(uv: &Vector3<f64>, n: &Vector3<f64>, etai_over_etat: f64) -> Vector3<f64> {
     let cos_theta = -uv.dot(n);
     let r_out_parallel = etai_over_etat * (uv + cos_theta * n);
-    let r_out_perp = -sqrt(1.0 - sqnorm(r_out_parallel)) * n;
+    let r_out_perp = -sqrt((1.0 - sqnorm(r_out_parallel)).abs()) * n;
     r_out_parallel + r_out_perp
 }
 
 pub fn sqnorm(v: Vector3<f64>) -> f64 {
     v.x * v.x + v.y * v.y + v.z + v.z
+}
+
+pub fn reflectance(cosine: f64, ref_idx: f64) -> f64 {
+    // Use Schlick's approximation for reflectance.
+    let r0 = (1. - ref_idx) / (1. + ref_idx);
+    let r0 = r0 * r0;
+    r0 + (1. - r0) * (1. - cosine).powf(5.)
+}
+
+pub fn deg_to_rad(deg: f64) -> f64 {
+    deg / 360. * 2. * PI
 }
