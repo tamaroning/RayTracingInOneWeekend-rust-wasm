@@ -1,9 +1,10 @@
+use js_sys::Math::sqrt;
 use rand::prelude::ThreadRng;
 
 use super::Color;
 use crate::hit::HitRecord;
 use crate::ray::Ray;
-use crate::utils::{near_zero, random_unit_vector, reflect};
+use crate::utils::{near_zero, random_unit_vector, reflect, refract};
 
 pub trait Material {
     fn scatter(
@@ -63,12 +64,57 @@ impl Material for Metal {
         rng: &mut ThreadRng,
     ) -> Option<(Ray, Color)> {
         let reflected = reflect(&ray_in.direction.normalize(), &hit_record.normal);
-        let scattered = Ray::new(hit_record.p, reflected + self.fuzz * random_unit_vector(rng));
+        let scattered = Ray::new(
+            hit_record.p,
+            reflected + self.fuzz * random_unit_vector(rng),
+        );
         if scattered.direction.dot(&hit_record.normal) > 0. {
             let attenuation = self.albedo;
             Some((scattered, attenuation))
         } else {
             None
         }
+    }
+}
+
+pub struct Dielectic {
+    refraction_idx: f64,
+}
+
+impl Dielectic {
+    pub fn new(ref_idx: f64) -> Self {
+        Dielectic {
+            refraction_idx: ref_idx,
+        }
+    }
+}
+
+impl Material for Dielectic {
+    fn scatter(
+        &self,
+        ray_in: &Ray,
+        hit_record: &HitRecord,
+        _rng: &mut ThreadRng,
+    ) -> Option<(Ray, Color)> {
+        let attenuation = Color::new(1., 1., 1.);
+        let refraction_ratio = if hit_record.front_face {
+            1. / self.refraction_idx
+        } else {
+            self.refraction_idx
+        };
+
+        let unit_direction = ray_in.direction.normalize();
+        let cos_theta = (-unit_direction.dot(&hit_record.normal)).min(1.);
+        let sin_theta = sqrt(1. - cos_theta * cos_theta);
+
+        let cannot_reflact = refraction_ratio * sin_theta > 1.;
+        let direction = if cannot_reflact {
+            reflect(&unit_direction, &hit_record.normal)
+        } else {
+            refract(&unit_direction, &hit_record.normal, refraction_ratio)
+        };
+
+        let scattered = Ray::new(hit_record.p, direction);
+        Some((scattered, attenuation))
     }
 }

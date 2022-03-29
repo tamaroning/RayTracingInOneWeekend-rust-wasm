@@ -63,8 +63,7 @@ pub fn random_vec3(rng: &mut ThreadRng) -> Vector3<f64> {
 pub fn random_vec3_in_unit_spehere(rng: &mut ThreadRng) -> Vector3<f64> {
     loop {
         let v = random_vec3(rng);
-        // FIXME: use sqnorm
-        if v.norm() < 1. {
+        if sqnorm(v) < 1. {
             return v;
         }
     }
@@ -85,4 +84,15 @@ pub fn reflect(v: &Vector3<f64>, n: &Vector3<f64>) -> Vector3<f64> {
 pub fn near_zero(v: &Vector3<f64>) -> bool {
     let s = 1e-8;
     (v.x < s) && (v.y < s) && (v.z < s)
+}
+
+pub fn refract(uv: &Vector3<f64>, n: &Vector3<f64>, etai_over_etat: f64) -> Vector3<f64> {
+    let cos_theta = -uv.dot(n);
+    let r_out_parallel = etai_over_etat * (uv + cos_theta * n);
+    let r_out_perp = -sqrt(1.0 - sqnorm(r_out_parallel)) * n;
+    r_out_parallel + r_out_perp
+}
+
+pub fn sqnorm(v: Vector3<f64>) -> f64 {
+    v.x * v.x + v.y * v.y + v.z + v.z
 }
