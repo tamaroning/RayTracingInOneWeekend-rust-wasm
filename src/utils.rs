@@ -107,3 +107,12 @@ pub fn reflectance(cosine: f64, ref_idx: f64) -> f64 {
 pub fn deg_to_rad(deg: f64) -> f64 {
     deg / 360. * 2. * PI
 }
+
+pub fn random_in_unit_disk(rng: &mut ThreadRng) -> Vector3<f64> {
+    loop {
+        let p = Vector3::new(random_f64(rng, -1., 1.), random_f64(rng, -1., 1.), 0.);
+        if sqnorm(p) < 1. {
+            return p;
+        }
+    }
+}

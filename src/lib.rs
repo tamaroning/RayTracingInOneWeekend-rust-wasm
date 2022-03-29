@@ -23,8 +23,8 @@ use crate::material::{Dielectic, Lambertian, Metal};
 const ASPECT_RATIO: f64 = 16. / 9.;
 const WIDTH: u32 = 512;
 const HEIGHT: u32 = (WIDTH as f64 / ASPECT_RATIO) as u32;
-const RESOLUTION: u32 = 1;
-const SAMPLES_PER_PIXEL: u32 = 8;
+const RESOLUTION: u32 = 2;
+const SAMPLES_PER_PIXEL: u32 = 10;
 const MAX_DEPTH: i32 = 5;
 
 // (r, g, b) = (x, y, z)
@@ -107,12 +107,20 @@ fn draw(context: &CanvasRenderingContext2d) {
     //
     // Camera
     //
+    let lookfrom = Vector3::new(3., 3., 2.);
+    let lookat = Vector3::new(0., 0., -1.);
+    let vup = Vector3::new(0., 1., 0.);
+    let dist_to_focus = (lookfrom - lookat).norm();
+    let aperture = 2.;
+
     let camera = Camera::new(
-        Vector3::new(-2., 2., 1.),
-        Vector3::new(0., 0., -1.),
-        Vector3::new(0., 1., 0.),
+        lookfrom,
+        lookat,
+        vup,
         20.,
         ASPECT_RATIO,
+        aperture,
+        dist_to_focus,
     );
 
     //
@@ -137,7 +145,7 @@ fn draw(context: &CanvasRenderingContext2d) {
                     - (y as f64 + random_f64(&mut rng, 0., RESOLUTION as f64))
                         / (HEIGHT - 1) as f64;
 
-                let ray = camera.get_ray(u, v);
+                let ray = camera.get_ray(u, v, &mut rng);
 
                 pixel_color += ray_color(&ray, &world, &mut rng, MAX_DEPTH);
             }
