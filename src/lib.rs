@@ -7,9 +7,10 @@ mod utils;
 use camera::Camera;
 use hit::Hittable;
 use hit::{HittableList, Sphere};
-use js_sys::Math::sqrt;
+use js_sys::Math::{atan, sqrt};
 use nalgebra::Vector3;
 use rand::prelude::ThreadRng;
+use rand::Rng;
 use ray::Ray;
 use std::f64::INFINITY;
 use std::rc::Rc;
@@ -20,12 +21,12 @@ use web_sys::CanvasRenderingContext2d;
 
 use crate::material::{Dielectic, Lambertian, Metal};
 
-const ASPECT_RATIO: f64 = 16. / 9.;
-const WIDTH: u32 = 512;
+const ASPECT_RATIO: f64 = 3. / 2.;
+const WIDTH: u32 = 1200;
 const HEIGHT: u32 = (WIDTH as f64 / ASPECT_RATIO) as u32;
-const RESOLUTION: u32 = 2;
-const SAMPLES_PER_PIXEL: u32 = 10;
-const MAX_DEPTH: i32 = 5;
+const RESOLUTION: u32 = 1;
+const SAMPLES_PER_PIXEL: u32 = 8;
+const MAX_DEPTH: i32 = 10;
 
 // (r, g, b) = (x, y, z)
 type Color = Vector3<f64>;
@@ -69,59 +70,10 @@ fn draw(context: &CanvasRenderingContext2d) {
     //
     // World
     //
-    let mut world = HittableList::new();
-
-    let material_ground = Lambertian::new(Color::new(0.8, 0.8, 0.));
-    let material_center = Lambertian::new(Color::new(0.1, 0.2, 0.5));
-    let material_left = Dielectic::new(1.5); //Metal::new(Color::new(0.8, 0.8, 0.8), 0.3);
-    let material_right = Metal::new(Color::new(0.8, 0.6, 0.2), 0.);
-
-    world.add(Sphere {
-        center: Vector3::new(0., -100.5, -1.),
-        radius: 100.,
-        material: Rc::new(material_ground),
-    });
-    world.add(Sphere {
-        center: Vector3::new(0., 0., -1.),
-        radius: 0.5,
-        material: Rc::new(material_center),
-    });
-    {
-        world.add(Sphere {
-            center: Vector3::new(-1., 0., -1.),
-            radius: 0.5,
-            material: Rc::new(material_left.clone()),
-        });
-        world.add(Sphere {
-            center: Vector3::new(-1., 0., -1.),
-            radius: -0.45,
-            material: Rc::new(material_left),
-        });
-    }
-    world.add(Sphere {
-        center: Vector3::new(1., 0., -1.),
-        radius: 0.5,
-        material: Rc::new(material_right),
-    });
-
-    //
-    // Camera
-    //
-    let lookfrom = Vector3::new(3., 3., 2.);
-    let lookat = Vector3::new(0., 0., -1.);
-    let vup = Vector3::new(0., 1., 0.);
-    let dist_to_focus = (lookfrom - lookat).norm();
-    let aperture = 2.;
-
-    let camera = Camera::new(
-        lookfrom,
-        lookat,
-        vup,
-        20.,
-        ASPECT_RATIO,
-        aperture,
-        dist_to_focus,
-    );
+    // Replace this with image15_scene(), image20_scene(), or image21_scene(&mut rng).
+    // this number of image corresponds to the book:
+    // https://raytracing.github.io/books/RayTracingInOneWeekend.html
+    let (world, camera) = image21_scene(&mut rng);
 
     //
     // Render
@@ -203,4 +155,204 @@ fn write_color(context: &CanvasRenderingContext2d, x: u32, y: u32, color: Color)
     ));
     context.set_fill_style(&color);
     context.fill_rect(px, py, px + RESOLUTION as f64, py + RESOLUTION as f64);
+}
+
+fn image15_scene() -> (HittableList<Sphere>, Camera) {
+    let mut world = HittableList::new();
+
+    let material_ground = Lambertian::new(Color::new(0.8, 0.8, 0.));
+    let material_center = Lambertian::new(Color::new(0.1, 0.2, 0.5));
+    let material_left = Dielectic::new(1.5); //Metal::new(Color::new(0.8, 0.8, 0.8), 0.3);
+    let material_right = Metal::new(Color::new(0.8, 0.6, 0.2), 1.);
+
+    world.add(Sphere {
+        center: Vector3::new(0., -100.5, -1.),
+        radius: 100.,
+        material: Rc::new(material_ground),
+    });
+    world.add(Sphere {
+        center: Vector3::new(0., 0., -1.),
+        radius: 0.5,
+        material: Rc::new(material_center),
+    });
+    world.add(Sphere {
+        center: Vector3::new(-1., 0., -1.),
+        radius: 0.5,
+        material: Rc::new(material_left),
+    });
+    world.add(Sphere {
+        center: Vector3::new(1., 0., -1.),
+        radius: 0.5,
+        material: Rc::new(material_right),
+    });
+
+    let lookfrom = Vector3::new(0., 0., 0.);
+    let lookat = Vector3::new(0., 0., -1.);
+    let vup = Vector3::new(0., 1., 0.);
+    let vfov = rad_to_deg(2. * atan(2.0 /* = h */ / 2.));
+    let dist_to_focus = (lookfrom - lookat).norm();
+    let aperture = 0.1;
+
+    let camera = Camera::new(
+        lookfrom,
+        lookat,
+        vup,
+        vfov,
+        ASPECT_RATIO,
+        aperture,
+        dist_to_focus,
+    );
+    (world, camera)
+}
+
+fn image20_scene() -> (HittableList<Sphere>, Camera) {
+    //
+    // World
+    //
+    let mut world = HittableList::new();
+
+    let material_ground = Lambertian::new(Color::new(0.8, 0.8, 0.));
+    let material_center = Lambertian::new(Color::new(0.1, 0.2, 0.5));
+    let material_left = Dielectic::new(1.5); //Metal::new(Color::new(0.8, 0.8, 0.8), 0.3);
+    let material_right = Metal::new(Color::new(0.8, 0.6, 0.2), 0.);
+
+    world.add(Sphere {
+        center: Vector3::new(0., -100.5, -1.),
+        radius: 100.,
+        material: Rc::new(material_ground),
+    });
+    world.add(Sphere {
+        center: Vector3::new(0., 0., -1.),
+        radius: 0.5,
+        material: Rc::new(material_center),
+    });
+    {
+        world.add(Sphere {
+            center: Vector3::new(-1., 0., -1.),
+            radius: 0.5,
+            material: Rc::new(material_left.clone()),
+        });
+        world.add(Sphere {
+            center: Vector3::new(-1., 0., -1.),
+            radius: -0.45,
+            material: Rc::new(material_left),
+        });
+    }
+    world.add(Sphere {
+        center: Vector3::new(1., 0., -1.),
+        radius: 0.5,
+        material: Rc::new(material_right),
+    });
+
+    //
+    // Camera
+    //
+    let lookfrom = Vector3::new(3., 3., 2.);
+    let lookat = Vector3::new(0., 0., -1.);
+    let vup = Vector3::new(0., 1., 0.);
+    let dist_to_focus = (lookfrom - lookat).norm();
+    let aperture = 2.;
+
+    let camera = Camera::new(
+        lookfrom,
+        lookat,
+        vup,
+        20.,
+        ASPECT_RATIO,
+        aperture,
+        dist_to_focus,
+    );
+    (world, camera)
+}
+
+fn image21_scene(rng: &mut ThreadRng) -> (HittableList<Sphere>, Camera) {
+    //
+    // World
+    //
+    let mut world = HittableList::new();
+
+    let ground_material = Lambertian::new(Color::new(0.5, 0.5, 0.5));
+    world.add(Sphere {
+        center: Vector3::new(0., -1000., 0.),
+        radius: 1000.,
+        material: Rc::new(ground_material),
+    });
+
+    for a in -11..11 {
+        for b in -11..11 {
+            let choose_mat = rng.gen::<f64>();
+            let center = Vector3::new(
+                a as f64 + 0.9 * rng.gen::<f64>(),
+                0.2,
+                b as f64 + 0.9 * rng.gen::<f64>(),
+            );
+
+            if (center - Vector3::new(4., 0.2, 0.)).norm() > 0.9 {
+                if choose_mat < 0.8 {
+                    // diffuse
+                    let albedo: Color = random_vec3(rng).component_mul(&random_vec3(rng));
+                    let material = Lambertian::new(albedo);
+                    world.add(Sphere {
+                        center,
+                        radius: 0.2,
+                        material: Rc::new(material),
+                    })
+                } else if choose_mat < 0.95 {
+                    // metal
+                    let albedo = random_vec3(rng) * 0.5 + Vector3::new(0.5, 0.5, 0.5);
+                    let fuzz = random_f64(rng, 0., 0.5);
+                    let material = Metal::new(albedo, fuzz);
+                    world.add(Sphere {
+                        center,
+                        radius: 0.2,
+                        material: Rc::new(material),
+                    });
+                } else {
+                    let material = Dielectic::new(1.5);
+                    world.add(Sphere {
+                        center,
+                        radius: 0.2,
+                        material: Rc::new(material),
+                    });
+                }
+            }
+        }
+    }
+
+    let material1 = Dielectic::new(1.5);
+    world.add(Sphere {
+        center: Vector3::new(0., 1., 0.),
+        radius: 1.,
+        material: Rc::new(material1),
+    });
+
+    let material2 = Lambertian::new(Color::new(0.4, 0.2, 0.1));
+    world.add(Sphere {
+        center: Vector3::new(-4., 1., 0.),
+        radius: 1.,
+        material: Rc::new(material2),
+    });
+
+    //let material3 = Metal::new(Color::new(0.7, 0.6, 0.5), 0.);
+    //world.add(Sphere { center: Vector3::new(4., 1., 0.), radius: 1., material: Rc::new(material3) });
+
+    //
+    // Camera
+    //
+    let lookfrom = Vector3::new(13., 2., 3.);
+    let lookat = Vector3::new(0., 0., 0.);
+    let vup = Vector3::new(0., 1., 0.);
+    let dist_to_focus = 10.;
+    let aperture = 0.1;
+
+    let camera = Camera::new(
+        lookfrom,
+        lookat,
+        vup,
+        20.,
+        ASPECT_RATIO,
+        aperture,
+        dist_to_focus,
+    );
+    (world, camera)
 }

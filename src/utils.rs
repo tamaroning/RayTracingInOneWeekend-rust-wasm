@@ -87,7 +87,7 @@ pub fn near_zero(v: &Vector3<f64>) -> bool {
 }
 
 pub fn refract(uv: &Vector3<f64>, n: &Vector3<f64>, etai_over_etat: f64) -> Vector3<f64> {
-    let cos_theta = -uv.dot(n);
+    let cos_theta = (-uv.dot(n)).min(1.);
     let r_out_parallel = etai_over_etat * (uv + cos_theta * n);
     let r_out_perp = -sqrt((1.0 - sqnorm(r_out_parallel)).abs()) * n;
     r_out_parallel + r_out_perp
@@ -106,6 +106,10 @@ pub fn reflectance(cosine: f64, ref_idx: f64) -> f64 {
 
 pub fn deg_to_rad(deg: f64) -> f64 {
     deg / 360. * 2. * PI
+}
+
+pub fn rad_to_deg(rad: f64) -> f64 {
+    rad * 180. / PI
 }
 
 pub fn random_in_unit_disk(rng: &mut ThreadRng) -> Vector3<f64> {
